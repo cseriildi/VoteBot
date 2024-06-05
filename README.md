@@ -7,7 +7,7 @@ This Discord bot allows users to create and manage polls within Discord servers.
 - **Single-choice Polls**: Users can create polls with a single-choice selection from a list of options.
 - **Multiple-choice Polls**: Users can create polls with multiple-choice selections from a list of options.
 - **Customizable End Date**: Poll creators can set an end date for each poll, after which voting is no longer allowed.
-- **Real-time Results**: Participants can view real-time poll results, which are updated automatically.
+- **Real-time Results**: Participants can view real-time poll results, which have to be updated manually by clicking on Refresh results.
 - **Interactive Interface**: The bot provides an interactive interface for creating, voting in, and viewing poll results.
 
 ## Commands
