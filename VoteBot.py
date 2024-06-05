@@ -6,19 +6,21 @@ from datetime import datetime
 from dotenv import load_dotenv
 import sqlite3
 
+# Load environment variables
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
+# Initialize Discord bot
 intents = discord.Intents.default()
 intents.message_content = True
-
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# Connect to the SQLite database
 conn = sqlite3.connect('polls.db')
 c = conn.cursor()
 
 ephemeral_messages = {}
-
+# Create tables if they don't exist
 c.execute('''CREATE TABLE IF NOT EXISTS Polls (
                 id INTEGER PRIMARY KEY,
                 question TEXT,
@@ -53,6 +55,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS EphemeralResultMessages (
 
 conn.commit()
 
+# Function to create a poll
 def create_poll(question, end_date, options, poll_type):
     c.execute("INSERT INTO Polls (question, end_date, poll_type) VALUES (?, ?, ?)", (question, end_date, poll_type))
     poll_id = c.lastrowid
@@ -61,6 +64,7 @@ def create_poll(question, end_date, options, poll_type):
     conn.commit()
     return poll_id
 
+# Function to get a poll and its options
 def get_poll(poll_id):
     c.execute("SELECT * FROM Polls WHERE id=?", (poll_id,))
     poll = c.fetchone()
@@ -71,23 +75,28 @@ def get_poll(poll_id):
     else:
         return None, []
 
+# Function to save a vote
 def save_vote(user_id, poll_id, option_id):
     c.execute("INSERT OR REPLACE INTO Votes (user_id, poll_id, option_id) VALUES (?, ?, ?)", (user_id, poll_id, option_id))
     conn.commit()
 
+# Function to get poll results
 def get_poll_results(poll_id):
     c.execute("SELECT option_text, COUNT(Votes.user_id) FROM Options LEFT JOIN Votes ON Options.id = Votes.option_id WHERE Options.poll_id=? GROUP BY Options.option_text", (poll_id,))
     results = c.fetchall()
     return results
 
+# Function to save an ephemeral result message
 def save_ephemeral_result_message(user_id, poll_id, message_id):
     c.execute("INSERT INTO EphemeralResultMessages (user_id, poll_id, message_id) VALUES (?, ?, ?)", (user_id, poll_id, message_id))
     conn.commit()
 
+# Function to get an ephemeral result message
 def get_ephemeral_result_message(user_id, poll_id, message_id):
     c.execute("SELECT message_id FROM EphemeralResultMessages WHERE user_id=? AND poll_id=? AND message_id=?", (user_id, poll_id, message_id))
     return c.fetchone()
 
+# Function to get poll results for display
 def get_results(poll_id):
     poll, options = get_poll(poll_id)
     if not poll:
@@ -113,6 +122,7 @@ def get_results(poll_id):
         results += f"*The poll ended at {end_time}*\n"
     return results
 
+# Custom View for displaying poll results
 class ResultMessage(discord.ui.View):
     def __init__(self, initial_content, poll_id, message_id, end_date):  
         super().__init__()
@@ -121,6 +131,7 @@ class ResultMessage(discord.ui.View):
         self.message_id = message_id
         self.end_date = end_date  
 
+        # Add refresh button
         refresh_button = Button(label="Refresh results", style=discord.ButtonStyle.success, custom_id=f"refresh_button_{poll_id}")
         self.add_item(refresh_button)
         refresh_button.callback = self.refresh_results
@@ -159,6 +170,7 @@ class ResultMessage(discord.ui.View):
         except Exception as e:
             print(f"Unexpected error: {e}")
 
+# Custom View for creating and displaying polls
 class PollView(View):
     def __init__(self, question, options, message, end_date, poll_id, multi_choice=False):
         super().__init__()
@@ -169,10 +181,12 @@ class PollView(View):
         self.poll_id = poll_id
         self.multi_choice = multi_choice
 
+        # Add vote button
         vote_button = Button(label="I want to vote", style=discord.ButtonStyle.primary, custom_id="vote_button")
         self.add_item(vote_button)
         vote_button.callback = self.vote_button
 
+        # Add show results button
         result_button = Button(label="Show results", style=discord.ButtonStyle.blurple, custom_id="result_button")
         self.add_item(result_button)
         result_button.callback = self.result_button
@@ -213,6 +227,7 @@ class PollView(View):
             return False
         return True
 
+# Custom View for single-choice polls
 class SinglePollView(View):
     def __init__(self, user_id, poll_id, options, end_date):
         super().__init__()
@@ -240,7 +255,6 @@ class SinglePollView(View):
             await interaction.response.edit_message(view=self)
             return False
         return interaction.user.id == self.user_id
-
 
     async def on_button_click(self, interaction: discord.Interaction):
         # Check if the poll has ended
@@ -279,6 +293,7 @@ class SinglePollView(View):
             c.execute("DELETE FROM Votes WHERE user_id=? AND poll_id=? AND option_id=(SELECT id FROM Options WHERE option_text=? AND poll_id=?)", (self.user_id, self.poll_id, option, self.poll_id))
             conn.commit()
 
+# Custom View for multi-choice polls
 class MultiPollView(View):
     def __init__(self, user_id, poll_id, options, end_date):
         super().__init__()
@@ -340,10 +355,12 @@ class MultiPollView(View):
         c.execute("DELETE FROM Votes WHERE user_id=? AND poll_id=? AND option_id=(SELECT id FROM Options WHERE option_text=? AND poll_id=?)", (self.user_id, self.poll_id, option, self.poll_id))
         conn.commit()
 
+# Bot event to print bot's name when it's ready
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
 
+# Command to create a single-choice poll
 @bot.command(name='single_poll')
 async def create_single_poll(ctx, question: str, end_date_str: str, *options: str):
     options = list(set(opt for opt in options if opt.strip()))  
@@ -368,6 +385,7 @@ async def create_single_poll(ctx, question: str, end_date_str: str, *options: st
     view = PollView(question, options, message, end_date, poll_id)
     await message.edit(view=view)
     
+# Command to create a multiple-choice poll
 @bot.command(name='multi_poll')
 async def create_multi_poll(ctx, question: str, end_date_str: str, *options: str):
     options = list(set(opt for opt in options if opt.strip()))  
@@ -392,6 +410,7 @@ async def create_multi_poll(ctx, question: str, end_date_str: str, *options: str
     view = PollView(question, options, message, end_date, poll_id, multi_choice=True)
     await message.edit(view=view)
 
+# Command to display poll creation help
 @bot.command(name='poll_help')
 async def poll_help(ctx):
     help_message = (
@@ -407,4 +426,5 @@ async def poll_help(ctx):
     )
     await ctx.send(help_message)
 
+# Run the bot
 bot.run(TOKEN)
