@@ -20,8 +20,12 @@ This Discord bot allows users to create and manage polls within Discord servers.
 
 1. Clone the repository: `git clone <repository-url>`
 2. Install the required dependencies: `pip install -r requirements.txt`
-3. Create a `.env` file in the root directory and add your Discord bot token: `DISCORD_TOKEN=<your-bot-token>`
-4. Run the bot: `python VoteBot.py`
+3. Create a new app on the [Discord Developer Portal](https://discord.com/developers/applications).
+4. Copy the Token from the `Bot` section.
+5. Create a `.env` file in the root directory and add your Discord bot token: `DISCORD_TOKEN=<your-bot-token>`
+6. Under the `OAuth2` section select `bot` at `OAuth2 URL Generator`, and then select `Send Messages/View Channels`, `Send Messages`, `Manage Messages`, `Embed Links`, `Read Message History`, `Add Reactions`.
+7. Copy the generated URL to invite the bot to your server.
+8. Run the bot: `python VoteBot.py`
 
 ## Usage
 
